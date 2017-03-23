@@ -86,7 +86,7 @@ EOF
       s.success
 
       # Checking verify
-      s = spinner('[SES] Checking verify')
+      s = spinner('[SES] Check Domain Identity Status *verified*')
       is_break = false
       100.times do
         res = ses.get_identity_verification_attributes(
@@ -172,7 +172,7 @@ EOF
       s.success
 
       # Check Mail and Approve
-      s = spinner('[S3] Checking Mail (for 30min)')
+      s = spinner('[S3] Check approval mail (will take about 30 min)')
       is_break = false
       60.times do
         s3.list_objects(bucket: bucket_name).contents.map do |object|

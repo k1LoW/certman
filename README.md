@@ -28,6 +28,8 @@ $ gem install certman
 
 ```sh
 $ certman request blog.example.com
+NOTICE! Certman support *us-east-1* only, now. OK? Yes
+NOTICE! When requesting, Certman replace Active Receipt Rule Set. OK? Yes
 [✔] [ACM] Check Certificate (successfull)
 [✔] [Route53] Check Hosted Zone (successfull)
 [✔] [Route53] Check TXT Record (successfull)
@@ -35,11 +37,11 @@ $ certman request blog.example.com
 [✔] [S3] Create Bucket for SES inbound (successfull)
 [✔] [SES] Create Domain Identity (successfull)
 [✔] [Route53] Add TXT Record Set to verify Domain Identity (successfull)
-[✔] [SES] Checking verify (successfull)
+[✔] [SES] Check Domain Identity Status *verified* (successfull)
 [✔] [Route53] Add MX Record Set (successfull)
 [✔] [SES] Create Receipt Rule (successfull)
 [✔] [ACM] Request Certificate (successfull)
-[✔] [S3] Checking Mail (for 30min) (successfull)
+[✔] [S3] Check approval mail (will take about 30 min) (successfull)
 [✔] [SES] Remove Receipt rule (successfull)
 [✔] [Route53] Remove Record Set (successfull)
 [✔] [SES] Remove Verified Domain Identiry (successfull)
