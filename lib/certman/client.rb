@@ -50,7 +50,7 @@ EOF
       )
       s.success
 
-      # Verify New Domain Identity
+      # Create Domain Identity
       s = spinner('[SES] Create Domain Identity')
       res = ses.verify_domain_identity(domain: domain)
       token = res.verification_token
@@ -171,7 +171,7 @@ EOF
       cert_arn = res.certificate_arn
       s.success
 
-      # Approve E-mail
+      # Check Mail and Approve
       s = spinner('[S3] Checking Mail (for 30min)')
       is_break = false
       60.times do
@@ -200,8 +200,8 @@ EOF
       end
       s.error unless is_break
 
-      # Remove Receipt rule
-      s = spinner('[SES] Remove Receipt rule')
+      # Remove Receipt Rule
+      s = spinner('[SES] Remove Receipt Rule')
       ses.set_active_receipt_rule_set(rule_set_name: current_rule_set_name)
       ses.delete_receipt_rule(
         rule_name: rule_name,

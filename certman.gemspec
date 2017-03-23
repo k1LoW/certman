@@ -25,6 +25,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'thor'
   spec.add_runtime_dependency 'public_suffix'
   spec.add_runtime_dependency 'oga'
+  spec.add_runtime_dependency 'tty-prompt'
   spec.add_runtime_dependency 'tty-spinner'
   spec.add_runtime_dependency 'pastel'
   spec.add_development_dependency 'bundler', '~> 1.12'
