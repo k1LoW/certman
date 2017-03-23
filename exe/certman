@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+
+require 'certman'
+
+Awsecrets.load
+Aws.config[:region] = 'us-east-1'
+
+Certman::CLI.start
