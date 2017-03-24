@@ -1,20 +1,23 @@
 module Certman
   class Client
+    attr_accessor :do_rollback
     attr_reader :domain
 
     def initialize(domain)
+      @do_rollback = false
       @domain = domain
+      @savepoint = []
     end
 
     def request_certificate
       check_resource
 
       # Get Account ID
-      account_id = sts.get_caller_identity.account
+      @account_id = sts.get_caller_identity.account
 
-      # Create S3 for SES inbound
-      s = spinner('[S3] Create Bucket for SES inbound')
-      bucket_policy = <<-"EOF"
+      # Create Bucket for SES inbound
+      transaction('[S3] Create Bucket for SES inbound', :s3_bucket) do
+        bucket_policy = <<-"EOF"
 {
             "Version": "2008-10-17",
     "Statement": [
@@ -32,58 +35,73 @@ module Certman
             "Resource": "arn:aws:s3:::#{bucket_name}/*",
             "Condition": {
                 "StringEquals": {
-                    "aws:Referer": "#{account_id}"
+                    "aws:Referer": "#{@account_id}"
                 }
             }
         }
     ]
 }
 EOF
-      s3.create_bucket(
-        acl: 'private',
-        bucket: bucket_name
-      )
-      s3.put_bucket_policy(
-        bucket: bucket_name,
-        policy: bucket_policy,
-        use_accelerate_endpoint: false
-      )
-      s.success
+        s3.create_bucket(
+          acl: 'private',
+          bucket: bucket_name
+        )
+        s3.put_bucket_policy(
+          bucket: bucket_name,
+          policy: bucket_policy,
+          use_accelerate_endpoint: false
+        )
+      end
+
+      if @do_rollback
+        rollback
+        return
+      end
 
       # Create Domain Identity
-      s = spinner('[SES] Create Domain Identity')
-      res = ses.verify_domain_identity(domain: domain)
-      token = res.verification_token
-      s.success
+      transaction('[SES] Create Domain Identity', :ses_domain_identity) do
+        res = ses.verify_domain_identity(domain: domain)
+        @token = res.verification_token
+      end
+
+      if @do_rollback
+        rollback
+        return
+      end
 
       # Add TXT Record Set with Route53
-      s = spinner('[Route53] Add TXT Record Set to verify Domain Identity')
-      root_domain = PublicSuffix.domain(domain)
-      hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
-        PublicSuffix.domain(zone.name) == root_domain
-      end
-      route53.change_resource_record_sets(
-        change_batch: {
-          changes: [
-            {
-              action: 'CREATE',
-              resource_record_set: {
-                name: "_amazonses.#{domain}",
-                resource_records: [
-                  {
-                    value: '"' + token + '"'
-                  }
-                ],
-                ttl: 60,
-                type: 'TXT'
+      transaction('[Route53] Add TXT Record Set to verify Domain Identity', :route53_txt) do
+        root_domain = PublicSuffix.domain(domain)
+        @hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
+          PublicSuffix.domain(zone.name) == root_domain
+        end
+        route53.change_resource_record_sets(
+          change_batch: {
+            changes: [
+              {
+                action: 'CREATE',
+                resource_record_set: {
+                  name: "_amazonses.#{domain}",
+                  resource_records: [
+                    {
+                      value: '"' + @token + '"'
+                    }
+                  ],
+                  ttl: 60,
+                  type: 'TXT'
+                }
               }
-            }
-          ],
-          comment: 'Generate by certman'
-        },
-        hosted_zone_id: hosted_zone.id
-      )
-      s.success
+            ],
+            comment: 'Generate by certman'
+          },
+          hosted_zone_id: @hosted_zone.id
+        )
+      end
+
+      if @do_rollback
+        rollback
+        return
+      end
 
       # Checking verify
       s = spinner('[SES] Check Domain Identity Status *verified*')
@@ -99,77 +117,103 @@ EOF
           s.success
           break
         end
+        break if @do_rollback
         sleep 5
       end
       s.error unless is_break
 
-      # Add MX Record Set
-      s = spinner('[Route53] Add MX Record Set')
-      route53.change_resource_record_sets(
-        change_batch: {
-          changes: [
-            {
-              action: 'CREATE',
-              resource_record_set: {
-                name: domain,
-                resource_records: [
-                  {
-                    value: '10 inbound-smtp.us-east-1.amazonaws.com'
-                  }
-                ],
-                ttl: 60,
-                type: 'MX'
-              }
-            }
-          ],
-          comment: 'Generate by certman'
-        },
-        hosted_zone_id: hosted_zone.id
-      )
-      s.success
+      if @do_rollback
+        rollback
+        return
+      end
 
-      # Create Receipt rule
-      s = spinner('[SES] Create Receipt Rule')
+      # Add MX Record Set
+      transaction('[Route53] Add MX Record Set', :route53_mx) do
+        route53.change_resource_record_sets(
+          change_batch: {
+            changes: [
+              {
+                action: 'CREATE',
+                resource_record_set: {
+                  name: domain,
+                  resource_records: [
+                    {
+                      value: '10 inbound-smtp.us-east-1.amazonaws.com'
+                    }
+                  ],
+                  ttl: 60,
+                  type: 'MX'
+                }
+              }
+            ],
+            comment: 'Generate by certman'
+          },
+          hosted_zone_id: @hosted_zone.id
+        )
+      end
+
+      if @do_rollback
+        rollback
+        return
+      end
+
+      # Create Receipt Rule
       rule_name = "S3RuleGeneratedByCertman_#{domain}"
       rule_set_name = "RuleSetGeneratedByCertman_#{domain}"
-      ses.create_receipt_rule_set(rule_set_name: rule_set_name)
-      ses.create_receipt_rule(
-        rule: {
-          recipients: ["admin@#{domain}"],
-          actions: [
-            {
-              s3_action: {
-                bucket_name: bucket_name
+      transaction('[SES] Create Receipt Rule Set', :ses_rule_set) do
+        ses.create_receipt_rule_set(rule_set_name: rule_set_name)
+      end
+      transaction('[SES] Create Receipt Rule', :ses_rule) do
+        ses.create_receipt_rule(
+          rule: {
+            recipients: ["admin@#{domain}"],
+            actions: [
+              {
+                s3_action: {
+                  bucket_name: bucket_name
+                }
               }
-            }
-          ],
-          enabled: true,
-          name: rule_name,
-          scan_enabled: true,
-          tls_policy: 'Optional'
-        },
-        rule_set_name: rule_set_name
-      )
-      current_rule_set_name = nil
-      res = ses.describe_active_receipt_rule_set
-      current_rule_set_name = res.metadata.name if res.metadata
-      ses.set_active_receipt_rule_set(rule_set_name: rule_set_name)
-      s.success
+            ],
+            enabled: true,
+            name: rule_name,
+            scan_enabled: true,
+            tls_policy: 'Optional'
+          },
+          rule_set_name: rule_set_name
+        )
+      end
+      transaction('[SES] Replace Active Receipt Rule Set', :ses_replace_active_rule_set) do
+        @current_rule_set_name = nil
+        res = ses.describe_active_receipt_rule_set
+        @current_rule_set_name = res.metadata.name if res.metadata
+        ses.set_active_receipt_rule_set(rule_set_name: rule_set_name)
+      end
+
+      if @do_rollback
+        rollback
+        return
+      end
 
       # Request Certificate
-      s = spinner('[ACM] Request Certificate')
-      res = acm.request_certificate(
-        domain_name: domain,
-        subject_alternative_names: [domain],
-        domain_validation_options: [
-          {
-            domain_name: domain,
-            validation_domain: domain
-          }
-        ]
-      )
-      cert_arn = res.certificate_arn
-      s.success
+      cert_arn = nil
+      transaction('[ACM] Request Certificate', :acm_certificate) do
+        res = acm.request_certificate(
+          domain_name: domain,
+          subject_alternative_names: [domain],
+          domain_validation_options: [
+            {
+              domain_name: domain,
+              validation_domain: domain
+            }
+          ]
+        )
+        cert_arn = res.certificate_arn
+      end
+
+      if @do_rollback
+        rollback
+        return
+      end
 
       # Check Mail and Approve
       s = spinner('[S3] Check approval mail (will take about 30 min)')
@@ -196,76 +240,12 @@ EOF
           end
         end
         break if is_break
+        break if @do_rollback
         sleep 30
       end
       s.error unless is_break
 
-      # Remove Receipt Rule
-      s = spinner('[SES] Remove Receipt Rule')
-      ses.set_active_receipt_rule_set(rule_set_name: current_rule_set_name)
-      ses.delete_receipt_rule(
-        rule_name: rule_name,
-        rule_set_name: rule_set_name
-      )
-      ses.delete_receipt_rule_set(rule_set_name: rule_set_name)
-      s.success
-
-      # Remove Record Set
-      s = spinner('[Route53] Remove Record Set')
-      route53.change_resource_record_sets(
-        change_batch: {
-          changes: [
-            {
-              action: 'DELETE',
-              resource_record_set: {
-                name: "_amazonses.#{domain}",
-                resource_records: [
-                  {
-                    value: '"' + token + '"'
-                  }
-                ],
-                ttl: 60,
-                type: 'TXT'
-              }
-            },
-            {
-              action: 'DELETE',
-              resource_record_set: {
-                name: domain,
-                resource_records: [
-                  {
-                    value: '10 inbound-smtp.us-east-1.amazonaws.com'
-                  }
-                ],
-                ttl: 60,
-                type: 'MX'
-              }
-            }
-          ],
-          comment: 'Generate by certman'
-        },
-        hosted_zone_id: hosted_zone.id
-      )
-      s.success
-
-      # Remove Verified Domain Identiry
-      s = spinner('[SES] Remove Verified Domain Identiry')
-      ses.delete_identity(identity: domain)
-      s.success
-
-      # Delete S3 for SES inbound
-      s = spinner('[S3] Delete Bucket')
-      objects = s3.list_objects(bucket: bucket_name).contents.map do |object|
-        { key: object.key }
-      end
-      s3.delete_objects(
-        bucket: bucket_name,
-        delete: {
-          objects: objects
-        }
-      )
-      s3.delete_bucket(bucket: bucket_name)
-      s.success
+      roleback
 
       cert_arn
     end
@@ -321,7 +301,115 @@ EOF
       true
     end
 
+    def rollback
+      @savepoint.reverse.each do |state|
+        case state
+        when :s3_bucket
+          # Delete S3 for SES inbound
+          s = spinner('[S3] Delete Bucket')
+          objects = s3.list_objects(bucket: bucket_name).contents.map do |object|
+            { key: object.key }
+          end
+          unless objects.empty?
+            s3.delete_objects(
+              bucket: bucket_name,
+              delete: {
+                objects: objects
+              }
+            )
+          end
+          s3.delete_bucket(bucket: bucket_name)
+          s.success
+        when :ses_domain_identity
+          # Remove Verified Domain Identiry
+          s = spinner('[SES] Remove Verified Domain Identiry')
+          ses.delete_identity(identity: domain)
+          s.success
+        when :route53_txt
+          # Remove TXT Record Set
+          s = spinner('[Route53] Remove TXT Record Set')
+          route53.change_resource_record_sets(
+            change_batch: {
+              changes: [
+                {
+                  action: 'DELETE',
+                  resource_record_set: {
+                    name: "_amazonses.#{domain}",
+                    resource_records: [
+                      {
+                        value: '"' + @token + '"'
+                      }
+                    ],
+                    ttl: 60,
+                    type: 'TXT'
+                  }
+                }
+              ],
+              comment: 'Generate by certman'
+            },
+            hosted_zone_id: @hosted_zone.id
+          )
+          s.success
+        when :route53_mx
+          # Remove MX Record Set
+          s = spinner('[Route53] Remove MX Record Set')
+          route53.change_resource_record_sets(
+            change_batch: {
+              changes: [
+                {
+                  action: 'DELETE',
+                  resource_record_set: {
+                    name: domain,
+                    resource_records: [
+                      {
+                        value: '10 inbound-smtp.us-east-1.amazonaws.com'
+                      }
+                    ],
+                    ttl: 60,
+                    type: 'MX'
+                  }
+                }
+              ],
+              comment: 'Generate by certman'
+            },
+            hosted_zone_id: @hosted_zone.id
+          )
+          s.success
+        when :ses_rule_set
+          # Remove Receipt Rule Set
+          s = spinner('[SES] Remove Receipt Rule Set')
+          ses.delete_receipt_rule_set(rule_set_name: rule_set_name)
+          s.success
+        when :ses_rule
+          # Remove Receipt Rule
+          s = spinner('[SES] Remove Receipt Rule')
+          ses.delete_receipt_rule(
+            rule_name: rule_name,
+            rule_set_name: rule_set_name
+          )
+          s.success
+        when :ses_replace_active_rule_set
+          # Revert Active Receipt Rule Set
+          s = spinner('[SES] Revert Active Receipt Rule Set')
+          ses.set_active_receipt_rule_set(rule_set_name: @current_rule_set_name)
+          s.success
+        end
+      end
+    end
+
     private
+
+    def transaction(message, save)
+      s = spinner(message)
+      begin
+        yield
+        @savepoint.push(save)
+        s.success
+      rescue
+        @do_rollback = true
+        s.error
+      end
+    end
 
     def sts
       @sts ||= Aws::STS::Client.new
