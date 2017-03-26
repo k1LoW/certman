@@ -6,7 +6,13 @@ module Certman
       prompt = TTY::Prompt.new
       return unless prompt.yes?(pastel.red('NOTICE! Certman support *us-east-1* only, now. OK?'))
       return unless prompt.yes?(pastel.red('NOTICE! When requesting, Certman replace Active Receipt Rule Set. OK?'))
-      cert_arn = Certman::Client.new(domain).request_certificate
+      client = Certman::Client.new(domain)
+      Signal.trap(:INT) do
+        puts ''
+        puts pastel.red('Rollback start.')
+        client.rollback
+      end
+      cert_arn = client.request
       puts 'Done.'
       puts ''
       puts "certificate_arn: #{pastel.cyan(cert_arn)}"
@@ -15,7 +21,7 @@ module Certman
 
     desc 'delete [DOMAIN]', 'Delete ACM Certificate'
     def delete(domain)
-      Certman::Client.new(domain).delete_certificate
+      Certman::Client.new(domain).delete
       puts 'Done.'
       puts ''
     end
