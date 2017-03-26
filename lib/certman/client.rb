@@ -24,16 +24,16 @@ module Certman
         create_domain_identity
       end
 
-      step('[Route53] Add TXT Record Set to verify Domain Identity', :route53_txt) do
-        add_txt_rset
+      step('[Route53] Create TXT Record Set to verify Domain Identity', :route53_txt) do
+        create_txt_rset
       end
 
       step('[SES] Check Domain Identity Status *verified*', nil) do
         check_domain_identity_verified
       end
 
-      step('[Route53] Add MX Record Set', :route53_mx) do
-        add_mx_rset
+      step('[Route53] Create MX Record Set', :route53_mx) do
+        create_mx_rset
       end
 
       step('[SES] Create Receipt Rule Set', :ses_rule_set) do
@@ -63,50 +63,25 @@ module Certman
 
     def delete
       s = spinner('[ACM] Delete Certificate')
-      current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
-        cert.domain_name == @domain
-      end
-      raise 'Certificate does not exist' unless current_cert
-      acm.delete_certificate(certificate_arn: current_cert.certificate_arn)
+      delete_certificate
       s.success
     end
 
     def check_resource
       s = spinner('[ACM] Check Certificate')
-      current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
-        cert.domain_name == @domain
-      end
-      raise 'Certificate already exist' if current_cert
+      check_certificate
       s.success
 
       s = spinner('[Route53] Check Hosted Zone')
-      root_domain = PublicSuffix.domain(@domain)
-      hosted_zone_id = nil
-      hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
-        if PublicSuffix.domain(zone.name) == root_domain
-          hosted_zone_id = zone.id
-          next true
-        end
-      end
-      raise "Hosted Zone #{root_domain} does not exist" unless hosted_zone
+      check_hosted_zone
       s.success
 
       s = spinner('[Route53] Check TXT Record')
-      res = route53.list_resource_record_sets(
-        hosted_zone_id: hosted_zone_id,
-        start_record_name: "_amazonses.#{@domain}.",
-        start_record_type: 'TXT'
-      )
-      raise "_amazonses.#{@domain} TXT already exist" unless res.resource_record_sets.empty?
+      check_txt_rset
       s.success
 
       s = spinner('[Route53] Check MX Record')
-      res = route53.list_resource_record_sets(
-        hosted_zone_id: hosted_zone_id,
-        start_record_name: "#{@domain}.",
-        start_record_type: 'MX'
-      )
-      raise "#{@domain} MX already exist" unless res.resource_record_sets.empty?
+      check_mx_rset
       s.success
 
       true
@@ -126,7 +101,7 @@ module Certman
         @savepoint.push(save)
         s.success
       rescue
-        puts "Error: #{$!}"
+        puts "Error: #{$ERROR_INFO}"
         @do_rollback = true
         s.error
       end
@@ -140,16 +115,16 @@ module Certman
           delete_bucket
           s.success
         when :ses_domain_identity
-          s = spinner('[SES] Remove Verified Domain Identiry')
+          s = spinner('[SES] Delete Verified Domain Identiry')
           delete_domain_identity
           s.success
         when :route53_txt
-          s = spinner('[Route53] Remove TXT Record Set')
-          remove_txt_rset
+          s = spinner('[Route53] Delete TXT Record Set')
+          delete_txt_rset
           s.success
         when :route53_mx
-          s = spinner('[Route53] Remove MX Record Set')
-          remove_mx_rset
+          s = spinner('[Route53] Delete MX Record Set')
+          delete_mx_rset
           s.success
         when :ses_rule_set
           s = spinner('[SES] Delete Receipt Rule Set')
