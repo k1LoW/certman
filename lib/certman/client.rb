@@ -13,7 +13,7 @@ module Certman
       @savepoint = []
     end
 
-    def request
+    def request(remain_resources = false)
       check_resource
 
       step('[S3] Create Bucket for SES inbound', :s3_bucket) do
@@ -56,7 +56,7 @@ module Certman
         check_approval_mail
       end
 
-      cleanup_resources
+      cleanup_resources if !remain_resources || @do_rollback
 
       @cert_arn
     end
