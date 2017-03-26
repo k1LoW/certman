@@ -10,9 +10,9 @@ module Certman
       Signal.trap(:INT) do
         puts ''
         puts pastel.red('Rollback start.')
-        client.do_rollback = true
+        client.rollback
       end
-      cert_arn = client.request_certificate
+      cert_arn = client.request
       puts 'Done.'
       puts ''
       puts "certificate_arn: #{pastel.cyan(cert_arn)}"
@@ -21,7 +21,7 @@ module Certman
 
     desc 'delete [DOMAIN]', 'Delete ACM Certificate'
     def delete(domain)
-      Certman::Client.new(domain).delete_certificate
+      Certman::Client.new(domain).delete
       puts 'Done.'
       puts ''
     end
