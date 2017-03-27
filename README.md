@@ -57,6 +57,12 @@ certificate_arn: arn:aws:acm:us-east-1:0123456789:certificate/123abcd4-5e67-8f90
 
 ```
 
+#### Remain Resources
+
+If you want to remain resources, use `--remain-resources` option.
+
+(see http://docs.aws.amazon.com/ja_jp/acm/latest/userguide/managed-renewal.html#how-manual-domain-validation-works)
+
 ### Delete Certificate
 
 ```sh
