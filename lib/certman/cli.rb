@@ -5,7 +5,8 @@ module Certman
     def request(domain)
       pastel = Pastel.new
       prompt = TTY::Prompt.new
-      return unless prompt.yes?(pastel.red("NOTICE! Your selected region is *#{Aws.config[:region]}*. Certman create certificate on *#{Aws.config[:region]}*. OK?"))
+      return unless prompt.yes?(pastel.red("NOTICE! Your selected region is *#{Aws.config[:region]}*. \
+Certman create certificate on *#{Aws.config[:region]}*. OK?"))
       unless ['us-east-1', 'us-west-2', 'eu-west-1'].include?(Aws.config[:region])
         return unless prompt.yes?(pastel.red('NOTICE! Certman use *us-east-1* S3/SES. OK?'))
       end
