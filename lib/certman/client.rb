@@ -16,44 +16,51 @@ module Certman
     def request(remain_resources = false)
       check_resource
 
-      step('[S3] Create Bucket for SES inbound', :s3_bucket) do
-        create_bucket
-      end
-
-      step('[SES] Create Domain Identity', :ses_domain_identity) do
-        create_domain_identity
+      enforce_region_to_us_east_1 do
+        step('[S3] Create Bucket for SES inbound', :s3_bucket) do
+          create_bucket
+        end
+        step('[SES] Create Domain Identity', :ses_domain_identity) do
+          create_domain_identity
+        end
       end
 
       step('[Route53] Create TXT Record Set to verify Domain Identity', :route53_txt) do
         create_txt_rset
       end
 
-      step('[SES] Check Domain Identity Status *verified*', nil) do
-        check_domain_identity_verified
+      enforce_region_to_us_east_1 do
+        step('[SES] Check Domain Identity Status *verified*', nil) do
+          check_domain_identity_verified
+        end
       end
 
       step('[Route53] Create MX Record Set', :route53_mx) do
         create_mx_rset
       end
 
-      step('[SES] Create Receipt Rule Set', :ses_rule_set) do
-        create_rule_set
-      end
+      enforce_region_to_us_east_1 do
+        step('[SES] Create Receipt Rule Set', :ses_rule_set) do
+          create_rule_set
+        end
 
-      step('[SES] Create Receipt Rule', :ses_rule) do
-        create_rule
-      end
+        step('[SES] Create Receipt Rule', :ses_rule) do
+          create_rule
+        end
 
-      step('[SES] Replace Active Receipt Rule Set', :ses_replace_active_rule_set) do
-        replace_active_rule_set
+        step('[SES] Replace Active Receipt Rule Set', :ses_replace_active_rule_set) do
+          replace_active_rule_set
+        end
       end
 
       step('[ACM] Request Certificate', :acm_certificate) do
         request_certificate
       end
 
-      step('[S3] Check approval mail (will take about 30 min)', nil) do
-        check_approval_mail
+      enforce_region_to_us_east_1 do
+        step('[S3] Check approval mail (will take about 30 min)', nil) do
+          check_approval_mail
+        end
       end
 
       cleanup_resources if !remain_resources || @do_rollback
@@ -93,6 +100,15 @@ module Certman
 
     private
 
+    def enforce_region_to_us_east_1
+      region = Aws.config[:region]
+      unless ['us-east-1', 'us-west-2', 'eu-west-1'].include?(Aws.config[:region])
+        Aws.config[:region] = 'us-east-1'
+      end
+      yield
+      Aws.config[:region] = region
+    end
+
     def step(message, save)
       return if @do_rollback
       s = spinner(message)
@@ -100,8 +116,10 @@ module Certman
         yield
         @savepoint.push(save)
         s.success
-      rescue
-        puts "Error: #{$ERROR_INFO}"
+      rescue => e
+        pastel = Pastel.new
+        puts ''
+        puts pastel.red("Error: #{e.message}")
         @do_rollback = true
         s.error
       end
@@ -111,13 +129,17 @@ module Certman
       @savepoint.reverse.each do |state|
         case state
         when :s3_bucket
-          s = spinner('[S3] Delete Bucket')
-          delete_bucket
-          s.success
+          enforce_region_to_us_east_1 do
+            s = spinner('[S3] Delete Bucket')
+            delete_bucket
+            s.success
+          end
         when :ses_domain_identity
-          s = spinner('[SES] Delete Verified Domain Identiry')
-          delete_domain_identity
-          s.success
+          enforce_region_to_us_east_1 do
+            s = spinner('[SES] Delete Verified Domain Identiry')
+            delete_domain_identity
+            s.success
+          end
         when :route53_txt
           s = spinner('[Route53] Delete TXT Record Set')
           delete_txt_rset
@@ -127,17 +149,23 @@ module Certman
           delete_mx_rset
           s.success
         when :ses_rule_set
-          s = spinner('[SES] Delete Receipt Rule Set')
-          delete_rule_set
-          s.success
+          enforce_region_to_us_east_1 do
+            s = spinner('[SES] Delete Receipt Rule Set')
+            delete_rule_set
+            s.success
+          end
         when :ses_rule
-          s = spinner('[SES] Delete Receipt Rule')
-          delete_rule
-          s.success
+          enforce_region_to_us_east_1 do
+            s = spinner('[SES] Delete Receipt Rule')
+            delete_rule
+            s.success
+          end
         when :ses_replace_active_rule_set
-          s = spinner('[SES] Revert Active Receipt Rule Set')
-          revert_active_rue_set
-          s.success
+          enforce_region_to_us_east_1 do
+            s = spinner('[SES] Revert Active Receipt Rule Set')
+            revert_active_rue_set
+            s.success
+          end
         end
       end
     end

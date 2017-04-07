@@ -2,7 +2,7 @@ module Certman
   class Log
     def initialize(message)
       @pastel = Pastel.new
-      @s = TTY::Spinner.new("[:spinner] #{message}", output: $stdout)
+      @s = TTY::Spinner.new("[:spinner] #{message} (#{Aws.config[:region]})", output: $stdout)
       @s.auto_spin
     end
 
