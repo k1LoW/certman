@@ -181,11 +181,23 @@ module Certman
     end
 
     def rule_name
-      @rule_name ||= "S3RuleGeneratedByCertman_#{@domain}"
+      @rule_name ||= if "S3RuleGeneratedByCertman_#{@domain}".length < 64
+                       "S3RuleGeneratedByCertman_#{@domain}"
+                     elsif "RuleCertman_#{@domain}".length < 64
+                       "RuleCertman_#{@domain}"
+                     else
+                       "RuleCertman_#{Digest::SHA1.hexdigest(@domain)}"
+                     end
     end
 
     def rule_set_name
-      @rule_set_name ||= "RuleSetGeneratedByCertman_#{@domain}"
+      @rule_set_name ||= if "RuleSetGeneratedByCertman_#{@domain}".length < 64
+                           "RuleSetGeneratedByCertman_#{@domain}"
+                         elsif "RuleSetCertman_#{@domain}".length < 64
+                           "RuleSetCertman_#{@domain}"
+                         else
+                           "RuleSetCertman_#{Digest::SHA1.hexdigest(@domain)}"
+                         end
     end
 
     def spinner(message)
