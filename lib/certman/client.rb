@@ -171,7 +171,13 @@ module Certman
     end
 
     def bucket_name
-      @bucket_name ||= "#{@domain}-generated-by-certman-for-ses-inbound-"
+      @bucket_name ||= if "#{@domain}-generated-by-certman-for-ses-inbound-".length < 63
+                         "#{@domain}-generated-by-certman-for-ses-inbound-"
+                       elsif "#{@domain}-certman-".length < 63
+                         "#{@domain}-certman-"
+                       else
+                         "#{Digest::SHA1.hexdigest(@domain)}-certman-"
+                       end
     end
 
     def rule_name
