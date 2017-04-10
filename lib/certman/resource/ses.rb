@@ -1,6 +1,8 @@
 module Certman
   module Resource
     module SES
+      REGIONS = %w(us-east-1 us-west-2 eu-west-1)
+
       def create_domain_identity
         res = ses.verify_domain_identity(domain: @domain)
         @token = res.verification_token

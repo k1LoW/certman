@@ -102,7 +102,7 @@ module Certman
 
     def enforce_region_to_us_east_1
       region = Aws.config[:region]
-      unless ['us-east-1', 'us-west-2', 'eu-west-1'].include?(Aws.config[:region])
+      unless Certman::Resource::SES::REGIONS.include?(Aws.config[:region])
         Aws.config[:region] = 'us-east-1'
       end
       yield
