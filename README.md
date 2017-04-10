@@ -1,4 +1,4 @@
-# Certman
+# Certman [![Gem](https://img.shields.io/gem/v/certman.svg)](https://rubygems.org/gems/certman) [![Travis](https://img.shields.io/travis/k1LoW/certman.svg)](https://travis-ci.org/k1LoW/certman)
 
 CLI tool for AWS Certificate Manager.
 
