@@ -115,21 +115,21 @@ module Certman
       end
 
       def check_txt_rset
-        res = route53.list_resource_record_sets(
+        res = route53.test_dns_answer(
           hosted_zone_id: @hosted_zone_id,
-          start_record_name: "_amazonses.#{@email_domain}.",
-          start_record_type: 'TXT'
+          record_name: "_amazonses.#{@email_domain}.",
+          record_type: 'TXT'
         )
-        raise "_amazonses.#{@email_domain} TXT already exist" unless res.resource_record_sets.empty?
+        raise "_amazonses.#{@email_domain} TXT already exist" unless res.record_data.empty?
       end
 
       def check_mx_rset
-        res = route53.list_resource_record_sets(
+        res = route53.test_dns_answer(
           hosted_zone_id: @hosted_zone_id,
-          start_record_name: "#{@email_domain}.",
-          start_record_type: 'MX'
+          record_name: "#{@email_domain}.",
+          record_type: 'MX'
         )
-        raise "#{@email_domain} MX already exist" unless res.resource_record_sets.empty?
+        raise "#{@email_domain} MX already exist" unless res.record_data.empty?
       end
 
       def route53
