@@ -13,7 +13,7 @@ module Certman
               {
                 action: 'CREATE',
                 resource_record_set: {
-                  name: "_amazonses.#{@domain}",
+                  name: "_amazonses.#{@email_domain}",
                   resource_records: [
                     {
                       value: '"' + @token + '"'
@@ -37,7 +37,7 @@ module Certman
               {
                 action: 'CREATE',
                 resource_record_set: {
-                  name: @domain,
+                  name: @email_domain,
                   resource_records: [
                     {
                       value: '10 inbound-smtp.us-east-1.amazonaws.com'
@@ -61,7 +61,7 @@ module Certman
               {
                 action: 'DELETE',
                 resource_record_set: {
-                  name: "_amazonses.#{@domain}",
+                  name: "_amazonses.#{@email_domain}",
                   resource_records: [
                     {
                       value: '"' + @token + '"'
@@ -85,7 +85,7 @@ module Certman
               {
                 action: 'DELETE',
                 resource_record_set: {
-                  name: @domain,
+                  name: @email_domain,
                   resource_records: [
                     {
                       value: '10 inbound-smtp.us-east-1.amazonaws.com'
@@ -117,19 +117,19 @@ module Certman
       def check_txt_rset
         res = route53.list_resource_record_sets(
           hosted_zone_id: @hosted_zone_id,
-          start_record_name: "_amazonses.#{@domain}.",
+          start_record_name: "_amazonses.#{@email_domain}.",
           start_record_type: 'TXT'
         )
-        raise "_amazonses.#{@domain} TXT already exist" unless res.resource_record_sets.empty?
+        raise "_amazonses.#{@email_domain} TXT already exist" unless res.resource_record_sets.empty?
       end
 
       def check_mx_rset
         res = route53.list_resource_record_sets(
           hosted_zone_id: @hosted_zone_id,
-          start_record_name: "#{@domain}.",
+          start_record_name: "#{@email_domain}.",
           start_record_type: 'MX'
         )
-        raise "#{@domain} MX already exist" unless res.resource_record_sets.empty?
+        raise "#{@email_domain} MX already exist" unless res.resource_record_sets.empty?
       end
 
       def route53

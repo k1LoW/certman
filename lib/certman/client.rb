@@ -9,6 +9,7 @@ module Certman
     def initialize(domain)
       @do_rollback = false
       @domain = domain
+      @email_domain = @domain.sub(/^www\./, '')
       @cert_arn = nil
       @savepoint = []
     end
@@ -171,26 +172,26 @@ module Certman
     end
 
     def bucket_name
-      @bucket_name ||= if "#{@domain}-certman".length < 63
-                         "#{@domain}-certman"
+      @bucket_name ||= if "#{@email_domain}-certman".length < 63
+                         "#{@email_domain}-certman"
                        else
-                         "#{Digest::SHA1.hexdigest(@domain)}-certman"
+                         "#{Digest::SHA1.hexdigest(@email_domain)}-certman"
                        end
     end
 
     def rule_name
-      @rule_name ||= if "RuleCertman_#{@domain}".length < 64
-                       "RuleCertman_#{@domain}"
+      @rule_name ||= if "RuleCertman_#{@email_domain}".length < 64
+                       "RuleCertman_#{@email_domain}"
                      else
-                       "RuleCertman_#{Digest::SHA1.hexdigest(@domain)}"
+                       "RuleCertman_#{Digest::SHA1.hexdigest(@email_domain)}"
                      end
     end
 
     def rule_set_name
-      @rule_set_name ||= if "RuleSetCertman_#{@domain}".length < 64
-                           "RuleSetCertman_#{@domain}"
+      @rule_set_name ||= if "RuleSetCertman_#{@email_domain}".length < 64
+                           "RuleSetCertman_#{@email_domain}"
                          else
-                           "RuleSetCertman_#{Digest::SHA1.hexdigest(@domain)}"
+                           "RuleSetCertman_#{Digest::SHA1.hexdigest(@email_domain)}"
                          end
     end
 
