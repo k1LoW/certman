@@ -40,7 +40,7 @@ module Certman
                   name: @domain,
                   resource_records: [
                     {
-                      value: '10 inbound-smtp.us-east-1.amazonaws.com'
+                      value: "10 inbound-smtp.#{Aws.config[:region]}.amazonaws.com"
                     }
                   ],
                   ttl: 60,
@@ -88,7 +88,7 @@ module Certman
                   name: @domain,
                   resource_records: [
                     {
-                      value: '10 inbound-smtp.us-east-1.amazonaws.com'
+                      value: "10 inbound-smtp.#{Aws.config[:region]}.amazonaws.com"
                     }
                   ],
                   ttl: 60,
