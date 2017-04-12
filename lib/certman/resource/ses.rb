@@ -4,7 +4,7 @@ module Certman
       REGIONS = %w(us-east-1 us-west-2 eu-west-1)
 
       def create_domain_identity
-        res = ses.verify_domain_identity(domain: @email_domain)
+        res = ses.verify_domain_identity(domain: email_domain)
         @token = res.verification_token
       end
 
@@ -13,10 +13,10 @@ module Certman
         100.times do
           res = ses.get_identity_verification_attributes(
             identities: [
-              @email_domain
+              email_domain
             ]
           )
-          if res.verification_attributes[@email_domain].verification_status == 'Success'
+          if res.verification_attributes[email_domain].verification_status == 'Success'
             # success
             is_break = true
             break
@@ -28,7 +28,7 @@ module Certman
       end
 
       def delete_domain_identity
-        ses.delete_identity(identity: @email_domain)
+        ses.delete_identity(identity: email_domain)
       end
 
       def create_rule_set
@@ -38,7 +38,7 @@ module Certman
       def create_rule
         ses.create_receipt_rule(
           rule: {
-            recipients: ["admin@#{@email_domain}"],
+            recipients: ["admin@#{email_domain}"],
             actions: [
               {
                 s3_action: {
