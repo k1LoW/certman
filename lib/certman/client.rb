@@ -8,6 +8,7 @@ module Certman
 
     def initialize(domain)
       @do_rollback = false
+      @cname_exists = false
       @domain = domain
       @cert_arn = nil
       @savepoint = []
@@ -76,20 +77,27 @@ module Certman
 
     def check_resource
       s = spinner('[ACM] Check Certificate')
-      check_certificate
+      raise 'Certificate already exist' if check_certificate
       s.success
 
       s = spinner('[Route53] Check Hosted Zone')
-      check_hosted_zone
+      raise "Hosted Zone #{root_domain} does not exist" unless check_hosted_zone
       s.success
 
       s = spinner('[Route53] Check TXT Record')
-      check_txt_rset
+      raise "_amazonses.#{email_domain} TXT already exist" if check_txt_rset
       s.success
 
       s = spinner('[Route53] Check MX Record')
-      check_mx_rset
+      raise "#{email_domain} MX already exist" if check_mx_rset
       s.success
+
+      if check_cname_rset
+        pastel = Pastel.new
+        puts pastel.red("#{email_domain} CNAME already exist. Use #{root_domain}")
+        @cname_exists = true
+        check_resource
+      end
 
       true
     end
@@ -185,8 +193,18 @@ module Certman
                        end
     end
 
+    def root_domain
+      PublicSuffix.domain(@domain)
+    end
+
     def email_domain
+      return root_domain if @cname_exists
       @domain.sub(/\A(www|\*)\./, '')
+    end
+
+    def validation_domain
+      return root_domain if @cname_exists
+      @domain
     end
 
     def rule_name
