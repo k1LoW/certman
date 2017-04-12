@@ -8,7 +8,7 @@ module Certman
           domain_validation_options: [
             {
               domain_name: @domain,
-              validation_domain: @domain
+              validation_domain: validation_domain
             }
           ]
         )
@@ -27,7 +27,7 @@ module Certman
         current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
           cert.domain_name == @domain
         end
-        raise 'Certificate already exist' if current_cert
+        current_cert
       end
 
       def acm

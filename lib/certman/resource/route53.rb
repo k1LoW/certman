@@ -3,7 +3,6 @@ module Certman
     # rubocop:disable Metrics/ModuleLength
     module Route53
       def create_txt_rset
-        root_domain = PublicSuffix.domain(@domain)
         @hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
           PublicSuffix.domain(zone.name) == root_domain
         end
@@ -103,7 +102,6 @@ module Certman
       end
 
       def check_hosted_zone
-        root_domain = PublicSuffix.domain(@domain)
         @hosted_zone_id = nil
         hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
           if PublicSuffix.domain(zone.name) == root_domain
@@ -111,7 +109,7 @@ module Certman
             next true
           end
         end
-        raise "Hosted Zone #{root_domain} does not exist" unless hosted_zone
+        hosted_zone
       end
 
       def check_txt_rset
@@ -120,7 +118,7 @@ module Certman
           record_name: "_amazonses.#{email_domain}.",
           record_type: 'TXT'
         )
-        raise "_amazonses.#{email_domain} TXT already exist" unless res.record_data.empty?
+        !res.record_data.empty?
       end
 
       def check_mx_rset
@@ -129,7 +127,16 @@ module Certman
           record_name: "#{email_domain}.",
           record_type: 'MX'
         )
-        raise "#{email_domain} MX already exist" unless res.record_data.empty?
+        !res.record_data.empty?
+      end
+
+      def check_cname_rset
+        res = route53.test_dns_answer(
+          hosted_zone_id: @hosted_zone_id,
+          record_name: "#{email_domain}.",
+          record_type: 'CNAME'
+        )
+        !res.record_data.empty?
       end
 
       def route53
