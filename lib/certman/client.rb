@@ -186,7 +186,7 @@ module Certman
     end
 
     def email_domain
-      @domain.sub(/^www\./, '')
+      @domain.sub(/\A(www|\*)\./, '')
     end
 
     def rule_name
