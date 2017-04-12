@@ -166,6 +166,13 @@ module Certman
             revert_active_rue_set
             s.success
           end
+        when :acm_certificate
+          if @do_rollback
+            s = spinner('[ACM] Delete Certificate')
+            delete_certificate
+            @cert_arn = nil
+            s.success
+          end
         end
       end
     end
