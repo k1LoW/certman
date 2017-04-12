@@ -94,7 +94,7 @@ module Certman
 
       if check_cname_rset
         pastel = Pastel.new
-        puts pastel.red("#{email_domain} CNAME already exist. Use #{root_domain}")
+        puts pastel.cyan("#{email_domain} CNAME already exist. Use #{root_domain}")
         @cname_exists = true
         check_resource
       end
