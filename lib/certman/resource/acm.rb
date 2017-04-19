@@ -16,7 +16,6 @@ module Certman
       end
 
       def resend_validation_email
-        puts 'resend'
         acm.resend_validation_email(
           certificate_arn: @cert_arn,
           domain: @domain,
