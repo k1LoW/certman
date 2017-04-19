@@ -41,7 +41,8 @@ EOF
 
       def check_approval_mail
         is_break = false
-        60.times do
+        30.times do
+          sleep 60
           s3.list_objects(bucket: bucket_name).contents.map do |object|
             res = s3.get_object(bucket: bucket_name, key: object.key)
             res.body.read.match(%r{https://certificates\.amazon\.com/approvals[^\s]+}) do |md|
@@ -61,7 +62,7 @@ EOF
           end
           break if is_break
           break if @do_rollback
-          sleep 30
+          resend_validation_email
         end
         raise 'Can not approve' unless is_break
       end

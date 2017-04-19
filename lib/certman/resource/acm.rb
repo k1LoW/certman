@@ -15,6 +15,15 @@ module Certman
         @cert_arn = res.certificate_arn
       end
 
+      def resend_validation_email
+        puts 'resend'
+        acm.resend_validation_email(
+          certificate_arn: @cert_arn,
+          domain: @domain,
+          validation_domain: validation_domain
+        )
+      end
+
       def delete_certificate
         current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
           cert.domain_name == @domain
