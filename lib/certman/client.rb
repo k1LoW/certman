@@ -17,7 +17,7 @@ module Certman
     def request(remain_resources = false)
       check_resource
 
-      enforce_region_to_us_east_1 do
+      enforce_region_by_hash do
         step('[S3] Create Bucket for SES inbound', :s3_bucket) do
           create_bucket
         end
@@ -30,17 +30,15 @@ module Certman
         create_txt_rset
       end
 
-      enforce_region_to_us_east_1 do
+      enforce_region_by_hash do
         step('[SES] Check Domain Identity Status *verified*', nil) do
           check_domain_identity_verified
         end
-      end
 
-      step('[Route53] Create MX Record Set', :route53_mx) do
-        create_mx_rset
-      end
+        step('[Route53] Create MX Record Set', :route53_mx) do
+          create_mx_rset
+        end
 
-      enforce_region_to_us_east_1 do
         step('[SES] Create Receipt Rule Set', :ses_rule_set) do
           create_rule_set
         end
@@ -58,7 +56,7 @@ module Certman
         request_certificate
       end
 
-      enforce_region_to_us_east_1 do
+      enforce_region_by_hash do
         step('[S3] Check approval mail (will take about 30 min)', nil) do
           check_approval_mail
         end
@@ -88,9 +86,11 @@ module Certman
       raise "_amazonses.#{email_domain} TXT already exist" if check_txt_rset
       s.success
 
-      s = spinner('[Route53] Check MX Record')
-      raise "#{email_domain} MX already exist" if check_mx_rset
-      s.success
+      enforce_region_by_hash do
+        s = spinner('[Route53] Check MX Record')
+        raise "#{email_domain} MX already exist" if check_mx_rset
+        s.success
+      end
 
       if check_cname_rset
         pastel = Pastel.new
@@ -108,11 +108,10 @@ module Certman
 
     private
 
-    def enforce_region_to_us_east_1
+    def enforce_region_by_hash
       region = Aws.config[:region]
-      unless Certman::Resource::SES::REGIONS.include?(Aws.config[:region])
-        Aws.config[:region] = 'us-east-1'
-      end
+      key = Digest::SHA1.hexdigest(@domain).to_i(16) % Certman::Resource::SES::REGIONS.length
+      Aws.config[:region] = Certman::Resource::SES::REGIONS[key]
       yield
       Aws.config[:region] = region
     end
@@ -137,13 +136,13 @@ module Certman
       @savepoint.reverse.each do |state|
         case state
         when :s3_bucket
-          enforce_region_to_us_east_1 do
+          enforce_region_by_hash do
             s = spinner('[S3] Delete Bucket')
             delete_bucket
             s.success
           end
         when :ses_domain_identity
-          enforce_region_to_us_east_1 do
+          enforce_region_by_hash do
             s = spinner('[SES] Delete Verified Domain Identiry')
             delete_domain_identity
             s.success
@@ -153,23 +152,25 @@ module Certman
           delete_txt_rset
           s.success
         when :route53_mx
-          s = spinner('[Route53] Delete MX Record Set')
-          delete_mx_rset
-          s.success
+          enforce_region_by_hash do
+            s = spinner('[Route53] Delete MX Record Set')
+            delete_mx_rset
+            s.success
+          end
         when :ses_rule_set
-          enforce_region_to_us_east_1 do
+          enforce_region_by_hash do
             s = spinner('[SES] Delete Receipt Rule Set')
             delete_rule_set
             s.success
           end
         when :ses_rule
-          enforce_region_to_us_east_1 do
+          enforce_region_by_hash do
             s = spinner('[SES] Delete Receipt Rule')
             delete_rule
             s.success
           end
         when :ses_replace_active_rule_set
-          enforce_region_to_us_east_1 do
+          enforce_region_by_hash do
             s = spinner('[SES] Revert Active Receipt Rule Set')
             revert_active_rue_set
             s.success
