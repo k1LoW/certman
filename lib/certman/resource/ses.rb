@@ -2,6 +2,7 @@ module Certman
   module Resource
     module SES
       REGIONS = %w(us-east-1 us-west-2 eu-west-1)
+      RULE_SET_NAME_BY_CERTMAN = 'RuleSetByCertman'
 
       def region_by_hash
         key = Digest::SHA1.hexdigest(@domain).to_i(16) % REGIONS.length
@@ -11,6 +12,12 @@ module Certman
       def create_domain_identity
         res = ses.verify_domain_identity(domain: email_domain)
         @token = res.verification_token
+      end
+
+      def check_current_active_rule_set
+        @current_active_rule_set_name = nil
+        res = ses.describe_active_receipt_rule_set
+        @current_active_rule_set_name = res.metadata.name if res.metadata
       end
 
       def check_domain_identity_verified
@@ -36,8 +43,9 @@ module Certman
         ses.delete_identity(identity: email_domain)
       end
 
-      def create_rule_set
+      def create_and_active_rule_set
         ses.create_receipt_rule_set(rule_set_name: rule_set_name)
+        ses.set_active_receipt_rule_set(rule_set_name: rule_set_name)
       end
 
       def create_rule
@@ -60,14 +68,15 @@ module Certman
         )
       end
 
-      def replace_active_rule_set
-        @current_rule_set_name = nil
+      def rule_exist?
         res = ses.describe_active_receipt_rule_set
-        @current_rule_set_name = res.metadata.name if res.metadata
-        ses.set_active_receipt_rule_set(rule_set_name: rule_set_name)
+        res.rules && !res.rules.empty?
       end
 
       def delete_rule_set
+        res = ses.describe_active_receipt_rule_set
+        return if res.rules && res.rules.length > 1
+        ses.set_active_receipt_rule_set(rule_set_name: nil)
         ses.delete_receipt_rule_set(rule_set_name: rule_set_name)
       end
 
@@ -76,10 +85,6 @@ module Certman
           rule_name: rule_name,
           rule_set_name: rule_set_name
         )
-      end
-
-      def revert_active_rue_set
-        ses.set_active_receipt_rule_set(rule_set_name: @current_rule_set_name)
       end
 
       def ses

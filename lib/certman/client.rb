@@ -39,16 +39,14 @@ module Certman
           create_mx_rset
         end
 
-        step('[SES] Create Receipt Rule Set', :ses_rule_set) do
-          create_rule_set
+        unless check_current_active_rule_set
+          step('[SES] Create and Active Receipt Rule Set', :ses_rule_set) do
+            create_and_active_rule_set
+          end
         end
 
         step('[SES] Create Receipt Rule', :ses_rule) do
           create_rule
-        end
-
-        step('[SES] Replace Active Receipt Rule Set', :ses_replace_active_rule_set) do
-          replace_active_rule_set
         end
       end
 
@@ -74,6 +72,8 @@ module Certman
     end
 
     def check_resource
+      pastel = Pastel.new
+
       s = spinner('[ACM] Check Certificate')
       raise 'Certificate already exist' if check_certificate
       s.success
@@ -89,14 +89,18 @@ module Certman
       enforce_region_by_hash do
         s = spinner('[Route53] Check MX Record')
         raise "#{email_domain} MX already exist" if check_mx_rset
+        if check_cname_rset
+          puts pastel.cyan("\n#{email_domain} CNAME already exist. Use #{root_domain}")
+          @cname_exists = true
+          check_resource
+        end
         s.success
-      end
 
-      if check_cname_rset
-        pastel = Pastel.new
-        puts pastel.cyan("#{email_domain} CNAME already exist. Use #{root_domain}")
-        @cname_exists = true
-        check_resource
+        s = spinner('[SES] Check Active Rule Set')
+        if check_current_active_rule_set
+          puts pastel.cyan("\nActive Rule Set already exist. Use #{@current_active_rule_set_name}")
+        end
+        s.success
       end
 
       true
@@ -132,6 +136,7 @@ module Certman
     end
 
     def cleanup_resources
+      pastel = Pastel.new
       @savepoint.reverse.each do |state|
         case state
         when :s3_bucket
@@ -159,19 +164,18 @@ module Certman
         when :ses_rule_set
           enforce_region_by_hash do
             s = spinner('[SES] Delete Receipt Rule Set')
-            delete_rule_set
-            s.success
+            if rule_exist?
+              puts pastel.cyan("\nReceipt Rule exist. Can not delete Receipt Rule Set.")
+              s.error
+            else
+              delete_rule_set
+              s.success
+            end
           end
         when :ses_rule
           enforce_region_by_hash do
             s = spinner('[SES] Delete Receipt Rule')
             delete_rule
-            s.success
-          end
-        when :ses_replace_active_rule_set
-          enforce_region_by_hash do
-            s = spinner('[SES] Revert Active Receipt Rule Set')
-            revert_active_rue_set
             s.success
           end
         when :acm_certificate
@@ -216,11 +220,8 @@ module Certman
     end
 
     def rule_set_name
-      @rule_set_name ||= if "RuleSetCertman_#{email_domain}".length < 64
-                           "RuleSetCertman_#{email_domain}"
-                         else
-                           "RuleSetCertman_#{Digest::SHA1.hexdigest(email_domain)}"
-                         end
+      @rule_set_name ||= @current_active_rule_set_name
+      @rule_set_name ||= Certman::Resource::SES::RULE_SET_NAME_BY_CERTMAN
     end
 
     def spinner(message)
