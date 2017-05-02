@@ -110,8 +110,7 @@ module Certman
 
     def enforce_region_by_hash
       region = Aws.config[:region]
-      key = Digest::SHA1.hexdigest(@domain).to_i(16) % Certman::Resource::SES::REGIONS.length
-      Aws.config[:region] = Certman::Resource::SES::REGIONS[key]
+      Aws.config[:region] = region_by_hash
       yield
       Aws.config[:region] = region
     end
