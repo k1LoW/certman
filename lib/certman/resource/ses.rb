@@ -14,7 +14,7 @@ module Certman
         @token = res.verification_token
       end
 
-      def check_current_active_rule_set
+      def active_rule_set_exist?
         @current_active_rule_set_name = nil
         res = ses.describe_active_receipt_rule_set
         @current_active_rule_set_name = res.metadata.name if res.metadata
