@@ -7,11 +7,9 @@ module Certman
       prompt = TTY::Prompt.new
       return unless prompt.yes?(pastel.red("NOTICE! Your selected region is *#{Aws.config[:region]}*. \
 Certman create certificate on *#{Aws.config[:region]}*. OK?"))
-      unless Certman::Resource::SES::REGIONS.include?(Aws.config[:region])
-        return unless prompt.yes?(pastel.red('NOTICE! Certman use *us-east-1* S3/SES. OK?'))
-      end
-      return unless prompt.yes?(pastel.red('NOTICE! When requesting, Certman replace Active Receipt Rule Set. OK?'))
       client = Certman::Client.new(domain)
+      return unless prompt.yes?(pastel.red("NOTICE! Certman use *#{client.region_by_hash}* S3/SES. OK?"))
+      return unless prompt.yes?(pastel.red('NOTICE! When requesting, Certman replace Active Receipt Rule Set. OK?'))
       Signal.trap(:INT) do
         puts ''
         puts pastel.red('Rollback start.')

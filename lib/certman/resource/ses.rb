@@ -3,6 +3,11 @@ module Certman
     module SES
       REGIONS = %w(us-east-1 us-west-2 eu-west-1)
 
+      def region_by_hash
+        key = Digest::SHA1.hexdigest(@domain).to_i(16) % REGIONS.length
+        REGIONS[key]
+      end
+
       def create_domain_identity
         res = ses.verify_domain_identity(domain: email_domain)
         @token = res.verification_token
