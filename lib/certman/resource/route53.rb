@@ -101,7 +101,7 @@ module Certman
         )
       end
 
-      def check_hosted_zone
+      def hosted_zone_exist?
         @hosted_zone_id = nil
         hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
           if PublicSuffix.domain(zone.name) == root_domain
@@ -112,7 +112,7 @@ module Certman
         hosted_zone
       end
 
-      def check_txt_rset
+      def txt_rset_exist?
         res = route53.test_dns_answer(
           hosted_zone_id: @hosted_zone_id,
           record_name: "_amazonses.#{email_domain}.",
@@ -121,7 +121,7 @@ module Certman
         !res.record_data.empty?
       end
 
-      def check_mx_rset
+      def mx_rset_exist?
         res = route53.test_dns_answer(
           hosted_zone_id: @hosted_zone_id,
           record_name: "#{email_domain}.",
@@ -130,7 +130,7 @@ module Certman
         !res.record_data.empty?
       end
 
-      def check_cname_rset
+      def cname_rset_exist?
         res = route53.test_dns_answer(
           hosted_zone_id: @hosted_zone_id,
           record_name: "#{email_domain}.",

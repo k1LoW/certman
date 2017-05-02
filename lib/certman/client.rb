@@ -39,7 +39,7 @@ module Certman
           create_mx_rset
         end
 
-        unless check_current_active_rule_set
+        unless active_rule_set_exist?
           step('[SES] Create and Active Receipt Rule Set', :ses_rule_set) do
             create_and_active_rule_set
           end
@@ -75,21 +75,21 @@ module Certman
       pastel = Pastel.new
 
       s = spinner('[ACM] Check Certificate')
-      raise 'Certificate already exist' if check_certificate
+      raise 'Certificate already exist' if certificate_exist?
       s.success
 
       s = spinner('[Route53] Check Hosted Zone')
-      raise "Hosted Zone #{root_domain} does not exist" unless check_hosted_zone
+      raise "Hosted Zone #{root_domain} does not exist" unless hosted_zone_exist?
       s.success
 
       s = spinner('[Route53] Check TXT Record')
-      raise "_amazonses.#{email_domain} TXT already exist" if check_txt_rset
+      raise "_amazonses.#{email_domain} TXT already exist" if txt_rset_exist?
       s.success
 
       enforce_region_by_hash do
         s = spinner('[Route53] Check MX Record')
-        raise "#{email_domain} MX already exist" if check_mx_rset
-        if check_cname_rset
+        raise "#{email_domain} MX already exist" if mx_rset_exist?
+        if cname_rset_exist?
           puts pastel.cyan("\n#{email_domain} CNAME already exist. Use #{root_domain}")
           @cname_exists = true
           check_resource
@@ -97,7 +97,7 @@ module Certman
         s.success
 
         s = spinner('[SES] Check Active Rule Set')
-        if check_current_active_rule_set
+        if active_rule_set_exist?
           puts pastel.cyan("\nActive Rule Set already exist. Use #{@current_active_rule_set_name}")
         end
         s.success
