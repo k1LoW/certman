@@ -6,19 +6,18 @@ module Certman
     include Certman::Resource::Route53
     include Certman::Resource::ACM
 
-    def initialize(domain)
+    def initialize(domain, options)
       @do_rollback = false
       @cname_exists = false
       @domain = domain
       @cert_arn = nil
       @savepoint = []
-    end
-
-    def request(options)
-      remain_resources = options[:remain_resources]
+      @remain_resources = options[:remain_resources]
       @hosted_zone_domain = options[:hosted_zone]
       @hosted_zone_domain.sub(/\.\z/, '') unless @hosted_zone_domain.nil?
+    end
 
+    def request
       check_resource
 
       enforce_region_by_hash do
@@ -64,7 +63,7 @@ module Certman
         end
       end
 
-      cleanup_resources if !remain_resources || @do_rollback
+      cleanup_resources if !@remain_resources || @do_rollback
 
       @cert_arn
     end
