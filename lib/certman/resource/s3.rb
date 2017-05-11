@@ -45,7 +45,7 @@ EOF
           sleep 60
           s3.list_objects(bucket: bucket_name).contents.map do |object|
             res = s3.get_object(bucket: bucket_name, key: object.key)
-            res.body.read.match(%r{https://certificates\.amazon\.com/approvals[^\s]+}) do |md|
+            res.body.read.match(%r{https://[^\s]*certificates\.amazon\.com/approvals[^\s]+}) do |md|
               cert_uri = md[0]
               handle = open(cert_uri)
               document = Oga.parse_html(handle)
@@ -53,7 +53,8 @@ EOF
               document.css('form input').each do |input|
                 data[input.get('name')] = input.get('value')
               end
-              res = Net::HTTP.post_form(URI.parse('https://certificates.amazon.com/approvals'), data)
+              post_uri = cert_uri.sub(/\?.*/, '')
+              res = Net::HTTP.post_form(URI.parse(post_uri), data)
               raise 'Can not approve' unless res.body =~ /Success/
               # success
               is_break = true

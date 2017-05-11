@@ -1,7 +1,8 @@
 module Certman
   class CLI < Thor
     desc 'request [DOMAIN]', 'Request ACM Certificate with only AWS managed services'
-    option :remain_resources, type: :boolean
+    option :remain_resources, type: :boolean, default: false
+    option :hosted_zone, type: :string
     def request(domain)
       pastel = Pastel.new
       prompt = TTY::Prompt.new
@@ -16,7 +17,7 @@ Receipt Rule Set. OK?"))
         puts pastel.red('Rollback start.')
         client.rollback
       end
-      cert_arn = client.request(options[:remain_resources])
+      cert_arn = client.request(options)
       puts 'Done.'
       puts ''
       puts "certificate_arn: #{pastel.cyan(cert_arn)}"

@@ -4,7 +4,7 @@ module Certman
     module Route53
       def create_txt_rset
         @hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
-          PublicSuffix.domain(zone.name) == root_domain
+          zone.name == "#{hosted_zone_domain}."
         end
         route53.change_resource_record_sets(
           change_batch: {
@@ -104,7 +104,7 @@ module Certman
       def hosted_zone_exist?
         @hosted_zone_id = nil
         hosted_zone = route53.list_hosted_zones.hosted_zones.find do |zone|
-          if PublicSuffix.domain(zone.name) == root_domain
+          if zone.name == "#{hosted_zone_domain}."
             @hosted_zone_id = zone.id
             next true
           end

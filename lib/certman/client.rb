@@ -14,7 +14,11 @@ module Certman
       @savepoint = []
     end
 
-    def request(remain_resources = false)
+    def request(options)
+      remain_resources = options[:remain_resources]
+      @hosted_zone_domain = options[:hosted_zone]
+      @hosted_zone_domain.sub(/\.\z/, '') unless @hosted_zone_domain.nil?
+
       check_resource
 
       enforce_region_by_hash do
@@ -79,7 +83,7 @@ module Certman
       s.success
 
       s = spinner('[Route53] Check Hosted Zone')
-      raise "Hosted Zone #{root_domain} does not exist" unless hosted_zone_exist?
+      raise "Hosted Zone #{hosted_zone_domain} does not exist" unless hosted_zone_exist?
       s.success
 
       s = spinner('[Route53] Check TXT Record')
@@ -90,7 +94,7 @@ module Certman
         s = spinner('[Route53] Check MX Record')
         raise "#{email_domain} MX already exist" if mx_rset_exist?
         if cname_rset_exist?
-          puts pastel.cyan("\n#{email_domain} CNAME already exist. Use #{root_domain}")
+          puts pastel.cyan("\n#{email_domain} CNAME already exist. Use #{hosted_zone_domain}")
           @cname_exists = true
           check_resource
         end
@@ -197,17 +201,22 @@ module Certman
                        end
     end
 
+    def hosted_zone_domain
+      return @hosted_zone_domain if @hosted_zone_domain
+      root_domain
+    end
+
     def root_domain
       PublicSuffix.domain(@domain)
     end
 
     def email_domain
-      return root_domain if @cname_exists
+      return hosted_zone_domain if @cname_exists
       @domain.sub(/\A(www|\*)\./, '')
     end
 
     def validation_domain
-      return root_domain if @cname_exists
+      return hosted_zone_domain if @cname_exists
       @domain
     end
 
