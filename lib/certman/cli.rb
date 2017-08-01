@@ -26,7 +26,7 @@ Receipt Rule Set. OK?"))
 
     desc 'delete [DOMAIN]', 'Delete ACM Certificate'
     def delete(domain)
-      Certman::Client.new(domain).delete
+      Certman::Client.new(domain, options).delete
       puts 'Done.'
       puts ''
     end
