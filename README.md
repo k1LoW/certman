@@ -64,6 +64,14 @@ If you want to remain resources, use `--remain-resources` option.
 
 (see http://docs.aws.amazon.com/ja_jp/acm/latest/userguide/managed-renewal.html#how-manual-domain-validation-works)
 
+### Restore Resources
+
+If you want to restore resources for ACM ( to receive approval mail ), use `certman restore-resources`.
+
+```sh
+$ certman restore-resources blog.example.com
+```
+
 ### Delete Certificate
 
 ```sh
