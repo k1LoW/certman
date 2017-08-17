@@ -2,7 +2,7 @@ module Certman
   class CLI < Thor
     desc 'request [DOMAIN]', 'Request ACM Certificate with only AWS managed services'
     option :remain_resources, type: :boolean, default: false
-    option :hosted_zone, type: :string
+    option :hosted_zone, type: :string, banner: '<Route53 HostedZone>'
     def request(domain)
       pastel = Pastel.new
       prompt = TTY::Prompt.new
@@ -25,7 +25,7 @@ Receipt Rule Set. OK?"))
     end
 
     desc 'restore-resources [DOMAIN]', 'Restore resources to receive approval mail'
-    option :hosted_zone, type: :string
+    option :hosted_zone, type: :string, banner: '<Route53 HostedZone>'
     def restore_resources(domain)
       pastel = Pastel.new
       prompt = TTY::Prompt.new
