@@ -68,18 +68,59 @@ module Certman
       @cert_arn
     end
 
+    def restore_resources
+      check_resource(check_acm: false)
+
+      enforce_region_by_hash do
+        step('[S3] Create Bucket for SES inbound', :s3_bucket) do
+          create_bucket
+        end
+        step('[SES] Create Domain Identity', :ses_domain_identity) do
+          create_domain_identity
+        end
+      end
+
+      step('[Route53] Create TXT Record Set to verify Domain Identity', :route53_txt) do
+        create_txt_rset
+      end
+
+      enforce_region_by_hash do
+        step('[SES] Check Domain Identity Status *verified*', nil) do
+          check_domain_identity_verified
+        end
+
+        step('[Route53] Create MX Record Set', :route53_mx) do
+          create_mx_rset
+        end
+
+        unless active_rule_set_exist?
+          step('[SES] Create and Active Receipt Rule Set', :ses_rule_set) do
+            create_and_active_rule_set
+          end
+        end
+
+        step('[SES] Create Receipt Rule', :ses_rule) do
+          create_rule
+        end
+      end
+
+      cleanup_resources if @do_rollback
+    end
+
     def delete
       s = spinner('[ACM] Delete Certificate')
       delete_certificate
       s.success
     end
 
-    def check_resource
+    def check_resource(check_acm: true)
       pastel = Pastel.new
 
-      s = spinner('[ACM] Check Certificate')
-      raise 'Certificate already exist' if certificate_exist?
-      s.success
+      if check_acm
+        s = spinner('[ACM] Check Certificate')
+        raise 'Certificate already exist' if certificate_exist?
+        s.success
+      end
 
       s = spinner('[Route53] Check Hosted Zone')
       raise "Hosted Zone #{hosted_zone_domain} does not exist" unless hosted_zone_exist?
