@@ -119,23 +119,40 @@ module Certman
 
       if check_acm
         s = spinner('[ACM] Check Certificate')
-        raise 'Certificate already exist' if certificate_exist?
+        if certificate_exist?
+          s.error
+          puts pastel.yellow("\nCertificate already exists!\n")
+          puts "certificate_arn: #{pastel.cyan(@cert_arn)}"
+          exit
+        end
         s.success
       end
 
       s = spinner('[Route53] Check Hosted Zone')
-      raise "Hosted Zone #{hosted_zone_domain} does not exist" unless hosted_zone_exist?
+      unless hosted_zone_exist?
+        s.error
+        puts pastel.red("\nHosted Zone #{hosted_zone_domain} does not exist")
+        exit
+      end
       s.success
 
       s = spinner('[Route53] Check TXT Record')
-      raise "_amazonses.#{email_domain} TXT already exist" if txt_rset_exist?
+      if txt_rset_exist?
+        s.error
+        puts pastel.red("\n_amazonses.#{email_domain} TXT already exists")
+        exit
+      end
       s.success
 
       enforce_region_by_hash do
         s = spinner('[Route53] Check MX Record')
-        raise "#{email_domain} MX already exist" if mx_rset_exist?
+        if mx_rset_exist?
+          s.error
+          puts pastel.red("\n#{email_domain} MX already exist")
+          exit
+        end
         if cname_rset_exist?
-          puts pastel.cyan("\n#{email_domain} CNAME already exist. Use #{hosted_zone_domain}")
+          puts pastel.cyan("\n#{email_domain} CNAME already exists. Use #{hosted_zone_domain}")
           @cname_exists = true
           check_resource
         end
