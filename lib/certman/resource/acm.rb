@@ -4,7 +4,7 @@ module Certman
       def request_certificate
         res = acm.request_certificate(
           domain_name: @domain,
-          subject_alternative_names: [@domain],
+          subject_alternative_names: @subject_alternative_names,
           domain_validation_options: [
             {
               domain_name: @domain,

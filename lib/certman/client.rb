@@ -10,6 +10,7 @@ module Certman
       @do_rollback = false
       @cname_exists = false
       @domain = domain
+      @subject_alternative_names = options[:subject_alternative_names]
       @cert_arn = nil
       @savepoint = []
       @remain_resources = options[:remain_resources]

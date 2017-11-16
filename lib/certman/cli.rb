@@ -3,6 +3,7 @@ module Certman
     desc 'request [DOMAIN]', 'Request ACM Certificate with only AWS managed services'
     option :remain_resources, type: :boolean, default: false
     option :hosted_zone, type: :string, banner: '<Route53 HostedZone>'
+    option :subject_alternative_names, type: :array, banner: 'alt_domain_1 alt_domain_2...'
     def request(domain)
       pastel = Pastel.new
       prompt = TTY::Prompt.new
