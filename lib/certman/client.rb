@@ -59,7 +59,7 @@ module Certman
       end
 
       enforce_region_by_hash do
-        step('[S3] Check approval mail (will take about 30 min)', nil) do
+        step('[S3] Check for approval mail (can take up to 30 min)', nil) do
           check_approval_mail
         end
       end
