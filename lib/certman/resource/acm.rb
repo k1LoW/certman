@@ -24,11 +24,8 @@ module Certman
       end
 
       def delete_certificate
-        current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
-          cert.domain_name == @domain
-        end
-        raise 'Certificate does not exist' unless current_cert
-        acm.delete_certificate(certificate_arn: current_cert.certificate_arn)
+        acm.delete_certificate(certificate_arn: @cert_arn)
+        @cert_arn = nil
       end
 
       def certificate_exist?

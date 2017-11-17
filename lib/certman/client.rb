@@ -110,6 +110,11 @@ module Certman
 
     def delete
       s = spinner('[ACM] Delete Certificate')
+      unless certificate_exist?
+        s.error
+        puts pastel.yellow("\nNo certificate to delete!\n")
+        exit
+      end
       delete_certificate
       s.success
     end
@@ -242,10 +247,7 @@ module Certman
           end
         when :acm_certificate
           if @do_rollback
-            s = spinner('[ACM] Delete Certificate')
-            delete_certificate
-            @cert_arn = nil
-            s.success
+            delete # certificate
           end
         end
       end
