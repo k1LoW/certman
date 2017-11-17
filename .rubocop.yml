@@ -24,6 +24,12 @@ Metrics/LineLength:
   
 Style/Documentation:
   Enabled: false
+
+Style/IndentHeredoc:
+  Enabled: false
   
 Style/MutableConstant:
+  Enabled: false
+  
+Style/PercentLiteralDelimiters:
   Enabled: false
