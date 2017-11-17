@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 2.2
+  TargetRubyVersion: 2.3
 
 Metrics/AbcSize:
   Max: 160
@@ -21,15 +21,15 @@ Metrics/BlockLength:
 
 Metrics/LineLength:
   Max: 120
-  
+
 Style/Documentation:
   Enabled: false
 
 Style/IndentHeredoc:
   Enabled: false
-  
+
 Style/MutableConstant:
   Enabled: false
-  
+
 Style/PercentLiteralDelimiters:
   Enabled: false
