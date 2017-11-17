@@ -1,6 +1,9 @@
 AllCops:
   TargetRubyVersion: 2.3
 
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
 Metrics/AbcSize:
   Max: 160
 
@@ -25,7 +28,7 @@ Metrics/LineLength:
 Style/Documentation:
   Enabled: false
 
-Style/IndentHeredoc:
+Layout/IndentHeredoc:
   Enabled: false
 
 Style/MutableConstant:
