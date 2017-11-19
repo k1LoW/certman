@@ -15,7 +15,7 @@ module Certman
       @savepoint = []
       @remain_resources = options[:remain_resources]
       @hosted_zone_domain = options[:hosted_zone]
-      @hosted_zone_domain&.sub(/\.\z/, '')
+      @hosted_zone_domain.sub(/\.\z/, '') if @hosted_zone_domain
     end
 
     def request

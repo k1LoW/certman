@@ -32,7 +32,7 @@ module Certman
         current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
           cert.domain_name == @domain
         end
-        @cert_arn = current_cert&.certificate_arn
+        @cert_arn = current_cert.certificate_arn if current_cert
       end
 
       def acm
