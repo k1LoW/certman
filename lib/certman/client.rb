@@ -10,11 +10,12 @@ module Certman
       @do_rollback = false
       @cname_exists = false
       @domain = domain
+      @subject_alternative_names = options[:subject_alternative_names]
       @cert_arn = nil
       @savepoint = []
       @remain_resources = options[:remain_resources]
       @hosted_zone_domain = options[:hosted_zone]
-      @hosted_zone_domain.sub(/\.\z/, '') unless @hosted_zone_domain.nil?
+      @hosted_zone_domain.sub(/\.\z/, '') if @hosted_zone_domain
     end
 
     def request
@@ -58,7 +59,7 @@ module Certman
       end
 
       enforce_region_by_hash do
-        step('[S3] Check approval mail (will take about 30 min)', nil) do
+        step('[S3] Check for approval mail (can take up to 30 min)', nil) do
           check_approval_mail
         end
       end
@@ -109,6 +110,11 @@ module Certman
 
     def delete
       s = spinner('[ACM] Delete Certificate')
+      unless certificate_exist?
+        s.error
+        puts pastel.yellow("\nNo certificate to delete!\n")
+        exit
+      end
       delete_certificate
       s.success
     end
@@ -118,23 +124,40 @@ module Certman
 
       if check_acm
         s = spinner('[ACM] Check Certificate')
-        raise 'Certificate already exist' if certificate_exist?
+        if certificate_exist?
+          s.error
+          puts pastel.yellow("\nCertificate already exists!\n")
+          puts "certificate_arn: #{pastel.cyan(@cert_arn)}"
+          exit
+        end
         s.success
       end
 
       s = spinner('[Route53] Check Hosted Zone')
-      raise "Hosted Zone #{hosted_zone_domain} does not exist" unless hosted_zone_exist?
+      unless hosted_zone_exist?
+        s.error
+        puts pastel.red("\nHosted Zone #{hosted_zone_domain} does not exist")
+        exit
+      end
       s.success
 
       s = spinner('[Route53] Check TXT Record')
-      raise "_amazonses.#{email_domain} TXT already exist" if txt_rset_exist?
+      if txt_rset_exist?
+        s.error
+        puts pastel.red("\n_amazonses.#{email_domain} TXT already exists")
+        exit
+      end
       s.success
 
       enforce_region_by_hash do
         s = spinner('[Route53] Check MX Record')
-        raise "#{email_domain} MX already exist" if mx_rset_exist?
+        if mx_rset_exist?
+          s.error
+          puts pastel.red("\n#{email_domain} MX already exist")
+          exit
+        end
         if cname_rset_exist?
-          puts pastel.cyan("\n#{email_domain} CNAME already exist. Use #{hosted_zone_domain}")
+          puts pastel.cyan("\n#{email_domain} CNAME already exists. Use #{hosted_zone_domain}")
           @cname_exists = true
           check_resource
         end
@@ -224,10 +247,7 @@ module Certman
           end
         when :acm_certificate
           if @do_rollback
-            s = spinner('[ACM] Delete Certificate')
-            delete_certificate
-            @cert_arn = nil
-            s.success
+            delete # certificate
           end
         end
       end

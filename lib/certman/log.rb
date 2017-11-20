@@ -7,7 +7,7 @@ module Certman
     end
 
     def success
-      @s.success(@pastel.green('(successfull)'))
+      @s.success(@pastel.green('(successful)'))
     end
 
     def error

@@ -4,7 +4,7 @@ module Certman
       def request_certificate
         res = acm.request_certificate(
           domain_name: @domain,
-          subject_alternative_names: [@domain],
+          subject_alternative_names: @subject_alternative_names,
           domain_validation_options: [
             {
               domain_name: @domain,
@@ -24,18 +24,15 @@ module Certman
       end
 
       def delete_certificate
-        current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
-          cert.domain_name == @domain
-        end
-        raise 'Certificate does not exist' unless current_cert
-        acm.delete_certificate(certificate_arn: current_cert.certificate_arn)
+        acm.delete_certificate(certificate_arn: @cert_arn)
+        @cert_arn = nil
       end
 
       def certificate_exist?
         current_cert = acm.list_certificates.certificate_summary_list.find do |cert|
           cert.domain_name == @domain
         end
-        current_cert
+        @cert_arn = current_cert.certificate_arn if current_cert
       end
 
       def acm
