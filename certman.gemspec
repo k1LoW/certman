@@ -21,7 +21,10 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.required_ruby_version = '>= 2.2'
-  spec.add_runtime_dependency 'aws-sdk', '< 2.9'
+  spec.add_runtime_dependency 'aws-sdk-acm', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-route53', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-s3', '~> 1'
+  spec.add_runtime_dependency 'aws-sdk-ses', '~> 1'
   spec.add_runtime_dependency 'awsecrets', '~> 1.8'
   spec.add_runtime_dependency 'thor'
   spec.add_runtime_dependency 'public_suffix'
